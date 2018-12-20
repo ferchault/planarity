@@ -2,6 +2,9 @@
 #include <openbabel/mol.h>
 #include <openbabel/op.h>
 #include <openbabel/obconversion.h>
+extern "C" {
+    #include <qhull/qhull_a.h>
+}
 using namespace std;
 
 int main(int argc,char **argv)
@@ -19,6 +22,11 @@ int main(int argc,char **argv)
   conv.ReadFile(&mol, argv[1]);
   OpenBabel::OBOp* pOp = OpenBabel::OBOp::FindType("gen3D");
   pOp->Do(dynamic_cast<OpenBabel::OBBase*>(&mol), "4");
-  cout << mol.GetCoordinates() << endl;
+  //cout << mol.GetCoordinates() << endl;
+  qh_new_qhull(3, mol.NumAtoms(), mol.GetCoordinates(), 0, "qhull s FA", NULL, NULL);
+  qh_getarea(qh facet_list);
+    cout << qh totvol << endl;
+    cout << qh totarea << endl;
+    qh_freeqhull(!qh_ALL);
   return 0;
 }
