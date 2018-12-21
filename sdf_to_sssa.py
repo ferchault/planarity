@@ -27,8 +27,11 @@ for line in fh:
 		if line.strip() == '> <%s>' % identifier:
 			name = None
 		if line.strip() == '$$$$':
-			res = get_sssa_components(np.array(coordinates))
-			print (name, res['volume'], res['area'], res['diameter'])
+			try:
+				res = get_sssa_components(np.array(coordinates))
+				print (name, res['volume'], res['area'], res['diameter'])
+			except:
+				pass
 			coordinates = []
 			molline = 0
 			name = 'noname'
