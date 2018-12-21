@@ -17,7 +17,7 @@ name = 'noname'
 for line in fh:
 	molline += 1
 	if molline == 4:
-		numatoms = int(line.strip().split()[0])
+		numatoms = int(line[:3].strip())
 	if molline > 4 and numatoms > 0:
 		coordinates.append(list(map(float, line.strip().split()[:3])))
 		numatoms -= 1
