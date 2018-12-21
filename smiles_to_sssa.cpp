@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <cmath>
 #include <openbabel/mol.h>
 #include <openbabel/op.h>
 #include <openbabel/obconversion.h>
@@ -21,6 +22,9 @@ int main(int argc,char **argv)
   conv.SetInFormat("SMI");
   OpenBabel::OBMol mol;
   OpenBabel::OBOp* gen3d = OpenBabel::OBOp::FindType("gen3D");
+  vertexT *vertexA;
+  vertexT *vertexB;
+  double distance, maxdistance;
 
   string line;
   while (getline(infile, line)) {
@@ -28,7 +32,23 @@ int main(int argc,char **argv)
     gen3d->Do(dynamic_cast<OpenBabel::OBBase*>(&mol), "4");
     qh_new_qhull(3, mol.NumAtoms(), mol.GetCoordinates(), 0, "qhull s FA", NULL, NULL);
     qh_getarea(qh facet_list);
-    cout << line << "  " << qh totvol << " " << qh totarea << endl;
+
+    // Calculate largest distance
+    maxdistance = 0;
+    for (vertexA = qh vertex_list; vertexA && vertexA->next; vertexA = vertex->next) {
+      for (vertexB = vertexA->next; vertexB && vertexB->next; vertexB = vertex->next) {
+        distance = 0;
+        for (int dim = 0; dim < 3; dim++) {
+          distance += (vertexA->point[dim] - vertexB->point[dim])*(vertexA->point[dim] - vertexB->point[dim]);
+        }
+        if (distance > maxdistance) {
+          maxdistance = distance;
+        }
+      }
+    }
+    maxdistance = sqrt(maxdistance)
+
+    cout << line << "  " << qh totvol << " " << qh totarea << " " << maxdistance << endl;
     qh_freeqhull(!qh_ALL);
   }
   
