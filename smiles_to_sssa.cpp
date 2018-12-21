@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
+#include <omp.h>
 #include <openbabel/mol.h>
 #include <openbabel/op.h>
 #include <openbabel/obconversion.h>
@@ -17,6 +18,8 @@ int main(int argc,char **argv)
   }
 
   ifstream infile(argv[1]);
+
+  omp_set_num_threads(1);
 
   OpenBabel::OBConversion conv;
   conv.SetInFormat("SMI");
