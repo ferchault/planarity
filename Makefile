@@ -1,6 +1,6 @@
 CC=g++
-CFLAGS=-c -I dep/dist/include/openbabel-2.0 -O3 -fopenmp
-LDFLAGS=-lopenbabel -L dep/dist/lib/ -lqhull -lgomp
+CFLAGS=-Wall -g -c -I dep/dist/include/libqhull -I dep/dist/include/openbabel-2.0/ -O3 -fopenmp
+LDFLAGS=-L dep/dist/lib/ -lqhull -lgomp -lopenbabel
 
 all: smiles_to_sssa
 
