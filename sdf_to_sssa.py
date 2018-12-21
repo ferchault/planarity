@@ -29,7 +29,7 @@ for line in fh:
 		if line.strip() == '$$$$':
 			try:
 				res = get_sssa_components(np.array(coordinates))
-				print (name, res['volume'], res['area'], res['diameter'])
+				print (name, res['volume'], res['area'], res['diameter'], len(coordinates))
 			except:
 				pass
 			coordinates = []
