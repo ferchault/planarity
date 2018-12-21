@@ -22,8 +22,10 @@ for line in fh:
 		coordinates.append(list(map(float, line.strip().split()[:3])))
 		numatoms -= 1
 	if molline > 4 and numatoms == 0:
+		if name is None:
+			name = line.strip()
 		if line.strip() == '> <%s>' % identifier:
-			name = line.strip()[3:-1]
+			name = None
 		if line.strip() == '$$$$':
 			res = get_sssa_components(np.array(coordinates))
 			print (name, res['volume'], res['area'], res['diameter'])
