@@ -48,7 +48,7 @@ int main(int argc,char **argv)
     }
     maxdistance = sqrt(maxdistance);
 
-    cout << line << "  " << qh totvol << " " << qh totarea << " " << maxdistance << endl;
+    cout << line << "  " << qh totvol << " " << qh totarea << " " << maxdistance << " " << mol.NumAtoms() << endl;
     qh_freeqhull(!qh_ALL);
   }
   
