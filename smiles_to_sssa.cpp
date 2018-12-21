@@ -35,8 +35,8 @@ int main(int argc,char **argv)
 
     // Calculate largest distance
     maxdistance = 0;
-    for (vertexA = qh vertex_list; vertexA && vertexA->next; vertexA = vertex->next) {
-      for (vertexB = vertexA->next; vertexB && vertexB->next; vertexB = vertex->next) {
+    for (vertexA = qh vertex_list; vertexA && vertexA->next; vertexA = vertexA->next) {
+      for (vertexB = vertexA->next; vertexB && vertexB->next; vertexB = vertexB->next) {
         distance = 0;
         for (int dim = 0; dim < 3; dim++) {
           distance += (vertexA->point[dim] - vertexB->point[dim])*(vertexA->point[dim] - vertexB->point[dim]);
@@ -46,7 +46,7 @@ int main(int argc,char **argv)
         }
       }
     }
-    maxdistance = sqrt(maxdistance)
+    maxdistance = sqrt(maxdistance);
 
     cout << line << "  " << qh totvol << " " << qh totarea << " " << maxdistance << endl;
     qh_freeqhull(!qh_ALL);
