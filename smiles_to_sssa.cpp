@@ -9,8 +9,8 @@ using namespace std;
 
 int main(int argc,char **argv)
 {
-  if(argc<3) {
-    cout << "Usage: ProgrameName InputFileName OutputFileName";
+  if(argc < 2) {
+    cout << "Usage:" << argv[0] << "SMIfile";
     return 1;
   }
 
