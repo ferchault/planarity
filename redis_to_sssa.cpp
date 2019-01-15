@@ -1,6 +1,8 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
+#include <cstdlib>
+#include <signal.h>
 #include <omp.h>
 #include <openbabel/mol.h>
 #include <openbabel/op.h>
@@ -13,6 +15,7 @@ extern "C" {
 };
 
 using namespace std;
+  redisContext *context;
 
 redisContext * redis_connect() {
   redisContext * context = redisConnect(getenv("CONFORMERREDIS"), 80);
@@ -44,11 +47,23 @@ int redis_fetch(redisContext * context, string * line) {
   return 0;
 }
 
+void cleanup(int s) {
+  std::cerr << "Cleanup" << std::endl;
+  redisFree(context);
+  exit(1);
+}
+
 int main(int argc,char **argv)
 {
+  struct sigaction sigIntHandler;
+
+  sigIntHandler.sa_handler = cleanup;
+  sigemptyset(&sigIntHandler.sa_mask);
+  sigIntHandler.sa_flags = 0;
+  sigaction(SIGINT, &sigIntHandler, NULL);
+
   omp_set_num_threads(1);
-  redisContext *context = redis_connect();
-  std::cout << "Connected to redis." << std::endl;
+  context = redis_connect();
 
   OpenBabel::OBConversion conv;
   conv.SetInFormat("SMI");
