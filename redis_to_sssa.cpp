@@ -6,7 +6,7 @@
 #include <openbabel/op.h>
 #include <openbabel/obconversion.h>
 extern "C" {
-	#include <qhull/qhull_a.h>
+	#include <qhull_a.h>
 }
 extern "C" { 	
 	#include "hiredis/hiredis.h" 
@@ -36,6 +36,9 @@ int redis_fetch(redisContext * context, string * line) {
   }
 
   // valid reply
+  if (reply->len == 0) {
+    return 1;
+  }
   line->assign(reply->str, reply->len);
   freeReplyObject(reply);
   return 0;
@@ -53,11 +56,10 @@ int main(int argc,char **argv)
   OpenBabel::OBOp* gen3d = OpenBabel::OBOp::FindType("gen3D");
   
   string line;
-  while (redis_fetch(context, *line)) {
-    std::cout << "got: " << line << std::endl;
+  while (redis_fetch(context, &line) == 0) {
     conv.ReadString(&mol, line);
     gen3d->Do(dynamic_cast<OpenBabel::OBBase*>(&mol), "4");
-    qh_new_qhull(3, mol.NumAtoms(), mol.GetCoordinates(), 0, "qhull s FA", NULL, NULL);
+    qh_new_qhull(3, mol.NumAtoms(), mol.GetCoordinates(), 0, "qhull s FA QJ Pp", NULL, NULL);
     qh_getarea(qh facet_list);
 
     cout << qh totvol << " " << qh totarea << " " << " " << mol.NumAtoms() << endl;
