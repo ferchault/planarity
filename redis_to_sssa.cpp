@@ -61,7 +61,6 @@ int redis_fetch(redisContext * context, string * line) {
 }
 
 void cleanup(int s) {
-  std::cerr << "Cleanup" << std::endl;
   redisFree(context);
   exit(1);
 }
