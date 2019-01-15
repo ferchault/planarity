@@ -4,9 +4,22 @@
 #include <cstdlib>
 #include <signal.h>
 #include <omp.h>
-#include <openbabel/mol.h>
-#include <openbabel/op.h>
-#include <openbabel/obconversion.h>
+
+#define USE_RDKIT
+
+#ifdef USE_OBABEL
+  #include <openbabel/mol.h>
+  #include <openbabel/op.h>
+  #include <openbabel/obconversion.h>
+#endif
+
+#ifdef USE_RDKIT
+  #include <GraphMol/GraphMol.h>
+  #include <GraphMol/FileParsers/MolSupplier.h>
+  #include <GraphMol/FileParsers/MolWriters.h>
+  #include <GraphMol/ForceFieldHelpers/MMFF/MMFF.h>
+#endif
+
 extern "C" {
 	#include <qhull_a.h>
 }
@@ -65,19 +78,45 @@ int main(int argc,char **argv)
   omp_set_num_threads(1);
   context = redis_connect();
 
+#ifdef USE_OBABEL
   OpenBabel::OBConversion conv;
   conv.SetInFormat("SMI");
   OpenBabel::OBMol mol;
   OpenBabel::OBOp* gen3d = OpenBabel::OBOp::FindType("gen3D");
+#endif
   
+  int numatoms;
   string line;
   while (redis_fetch(context, &line) == 0) {
-    conv.ReadString(&mol, line);
-    gen3d->Do(dynamic_cast<OpenBabel::OBBase*>(&mol), "4");
-    qh_new_qhull(3, mol.NumAtoms(), mol.GetCoordinates(), 0, "qhull s FA QJ Pp", NULL, NULL);
-    qh_getarea(qh facet_list);
+    #ifdef USE_OBABEL
+      conv.ReadString(&mol, line);
+      gen3d->Do(dynamic_cast<OpenBabel::OBBase*>(&mol), "4");
+      qh_new_qhull(3, mol.NumAtoms(), mol.GetCoordinates(), 0, "qhull s FA QJ Pp", NULL, NULL);
+      numatoms = mol.NumAtoms():
+    #endif
+    #ifdef USE_RDKIT
+      try {
+        RDKit::ROMol *mol_ro = RDKit::SmilesToMol(line);
+        RDKit::RWMOL_SPTR mol( new RDKit::RWMol( *mol_ro ) );
+        RDKit::MolOps::addHs(*mol);
+        RDKit::MMFF::MMFFOptimizeMolecule(*mol, 100, "MMFF94s");
+        numatoms = mol->getNumAtoms();
+        qh_new_qhull(3, mol.NumAtoms(), mol->getConformer()->getPositions(), 0, "qhull s FA QJ Pp", NULL, NULL);
+      } catch( RDKit::MolSanitizeException &e ) {
+        continue;
+      }
 
-    cout << qh totvol << " " << qh totarea << " " << " " << mol.NumAtoms() << endl;
+      delete mol;
+    #endif
+
+    qh_getarea(qh facet_list);
+    cout << qh totvol << " " << qh totarea << " " << " " << numatoms << endl;
+
+    #ifdef USE_RDKIT
+      delete mol;
+      delete mol_ro;
+    #endif
+
     qh_freeqhull(!qh_ALL);
   }
   
