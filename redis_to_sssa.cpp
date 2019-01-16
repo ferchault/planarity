@@ -20,6 +20,8 @@
   #include <GraphMol/FileParsers/MolSupplier.h>
   #include <GraphMol/FileParsers/MolWriters.h>
   #include <GraphMol/ForceFieldHelpers/MMFF/MMFF.h>
+  #include <GraphMol/FileParsers/FileParsers.h>
+  #include <GraphMol/DistGeomHelpers/Embedder.h>
 #endif
 
 extern "C" {
@@ -90,7 +92,6 @@ int main(int argc,char **argv)
   double * coords;
   string line;
   while (redis_fetch(context, &line) == 0) {
-std::cout << line <<std::endl;
     #ifdef USE_OBABEL
       conv.ReadString(&mol, line);
       gen3d->Do(dynamic_cast<OpenBabel::OBBase*>(&mol), "4");
@@ -102,8 +103,9 @@ std::cout << line <<std::endl;
         RDKit::ROMol *mol_ro = RDKit::SmilesToMol(line);
         RDKit::RWMOL_SPTR mol( new RDKit::RWMol( *mol_ro ) );
         RDKit::MolOps::addHs(*mol);
-        RDKit::MMFF::MMFFOptimizeMolecule(*mol, 100, "MMFF94s");
         numatoms = mol->getNumAtoms();
+	RDKit::DGeomHelpers::EmbedMolecule( *mol );
+        RDKit::MMFF::MMFFOptimizeMolecule(*mol, 100, "MMFF94s");
         coords = new double[numatoms*3];
         const RDGeom::POINT3D_VECT &vec = mol->getConformer(0).getPositions();
 	for (int i = 0; i < numatoms; i++) {
@@ -113,10 +115,8 @@ std::cout << line <<std::endl;
         }
         qh_new_qhull(3, numatoms, coords, 0, "qhull s FA QJ Pp", NULL, NULL);
         delete[] coords;
-        delete &mol;
         delete mol_ro;
       } catch ( const RDKit::ConformerException &ex ) {
-std::cout << "DAMN" << ex.message() << std::endl;
 	continue;
       }
 
