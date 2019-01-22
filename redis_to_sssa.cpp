@@ -116,7 +116,7 @@ int main(int argc,char **argv)
         qh_new_qhull(3, numatoms, coords, 0, "qhull s FA QJ Pp", NULL, NULL);
         delete[] coords;
         delete mol_ro;
-      } catch ( const RDKit::ConformerException &ex ) {
+      } catch ( ... ) {
 	continue;
       }
 
