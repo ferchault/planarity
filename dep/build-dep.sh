@@ -10,6 +10,7 @@ make -j4
 make install
 cd ../..
 
+wget http://www.qhull.org/download/qhull-2015-src-7.2.0.tgz
 tar xzf qhull-2015-src-7.2.0.tgz
 cd qhull-2015.2/
 mkdir cbuild
