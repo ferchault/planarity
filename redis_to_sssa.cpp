@@ -61,10 +61,9 @@ int redis_fetch(redisContext * context, string * line) {
 				redisAppendCommand(context, "RPOP SSSASMILES");
 			}
 			remaining_replies = REDIS_PIPELINING;
-		} else {
-			redisGetReply(context, &reply);
-			remaining_replies--;
 		}
+		redisGetReply(context, (void**)&reply);
+		remaining_replies--;
 	} else {
 		reply = (redisReply*)redisCommand(context, "RPOP SSSASMILES");
 	}
