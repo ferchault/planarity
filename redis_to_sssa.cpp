@@ -5,7 +5,11 @@
 #include <signal.h>
 #include <omp.h>
 
+// if present, use rdkit instead of OpenBabel
 #define USE_RDKIT
+
+// Set to 1 to disable pipelining
+#define REDIS_PIPELINING 50
 
 #ifdef USE_OBABEL
 	#include <openbabel/mol.h>
@@ -34,6 +38,7 @@ extern "C" {
 using namespace std;
 
 redisContext *context;
+int remaining_replies = 0;
 
 redisContext * redis_connect() {
 	redisContext * context = redisConnect(getenv("CONFORMERREDIS"), 80);
@@ -50,7 +55,20 @@ redisContext * redis_connect() {
 // reads a single SMILES
 int redis_fetch(redisContext * context, string * line) {
 	redisReply *reply;
-	reply = (redisReply*)redisCommand(context, "RPOP SSSASMILES");
+	if (REDIS_PIPELINING > 1) {
+		if (remaining_replies == 0) {
+			for (int i=0; i < REDIS_PIPELINING; ++i) {
+				redisAppendCommand(context, "RPOP SSSASMILES");
+			}
+			remaining_replies = REDIS_PIPELINING;
+		} else {
+			redisGetReply(context, &reply);
+			remaining_replies--;
+		}
+	} else {
+		reply = (redisReply*)redisCommand(context, "RPOP SSSASMILES");
+	}
+	
 	if (reply == NULL || reply->type != REDIS_REPLY_STRING) {
 		// invalid reply || no further work or server-side issue
 		freeReplyObject(reply);
