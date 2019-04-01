@@ -8,6 +8,9 @@
 // if present, use rdkit instead of OpenBabel
 #define USE_RDKIT
 
+// if present, calculate moments of inertia instead
+#define INERTIA
+
 // Set to 1 to disable pipelining
 #define REDIS_PIPELINING 50
 
@@ -28,9 +31,11 @@
 	#include <GraphMol/DistGeomHelpers/Embedder.h>
 #endif
 
+#ifndef INERTIA
 extern "C" {
 	#include <qhull_a.h>
 }
+#endif
 extern "C" { 	
 	#include "hiredis/hiredis.h" 
 };
@@ -109,6 +114,9 @@ int main(int argc,char **argv)
 
 	int numatoms;
 	double * coords;
+	double in[3];
+	double com[3];
+	double mass, totalmass, x, y, z;
 	string line;
 	while (redis_fetch(context, &line) == 0) {
 		#ifdef USE_OBABEL
@@ -125,25 +133,60 @@ int main(int argc,char **argv)
 				numatoms = mol->getNumAtoms();
 				RDKit::DGeomHelpers::EmbedMolecule( *mol );
 				RDKit::MMFF::MMFFOptimizeMolecule(*mol, 100, "MMFF94s");
-				coords = new double[numatoms*3];
 				const RDGeom::POINT3D_VECT &vec = mol->getConformer(0).getPositions();
-				for (int i = 0; i < numatoms; i++) {
-					coords[i*3 + 0]  = vec[i].x;
-					coords[i*3 + 1]  = vec[i].y;
-					coords[i*3 + 2]  = vec[i].z;
-				}
-				qh_new_qhull(3, numatoms, coords, 0, "qhull s FA QJ Pp", NULL, NULL);
+				#ifndef INERTIA
+					coords = new double[numatoms*3];
+					for (int i = 0; i < numatoms; i++) {
+						coords[i*3 + 0]  = vec[i].x;
+						coords[i*3 + 1]  = vec[i].y;
+						coords[i*3 + 2]  = vec[i].z;
+					}
+					qh_new_qhull(3, numatoms, coords, 0, "qhull s FA QJ Pp", NULL, NULL);
+				#endif
+				#ifdef INERTIA
+					totalmass = 0.;
+					com[0] = 0.;
+					com[1] = 0.;
+					com[2] = 0.;
+					for (int i = 0; i < numatoms; i++) {
+						mass = mol->getAtomWithIdx()->getMass();
+						totalmass += mass;
+						com[0] += vec[i].x*mass;
+						com[1] += vec[i].y*mass;
+						com[2] += vec[i].z*mass;
+					}	
+					com[0] /= totalmass;
+					com[1] /= totalmass;
+					com[2] /= totalmass;
+					in[0] = 0;
+					in[1] = 0;
+					in[2] = 0;
+					for (int i = 0; i < numatoms; i++) {
+						mass = mol->getAtomWithIdx()->getMass();
+						x = vec[i].x - com[0];
+						y = vec[i].y - com[1];
+						z = vec[i].z - com[2];
+						in[0] += mass * (y*y  + z*z);
+						in[1] += mass * (z*z  + x*x);
+						in[2] += mass * (y*y  + x*x);
+					}
+				#endif
 				delete[] coords;
 				delete mol_ro;
 			} catch ( ... ) {
 				continue;
 			}
 		#endif
+		
+		#ifndef INERTIA
+			qh_getarea(qh facet_list);
+			cout << qh totvol << " " << qh totarea << " " << " " << numatoms << endl;
 
-		qh_getarea(qh facet_list);
-		cout << qh totvol << " " << qh totarea << " " << " " << numatoms << endl;
-
-		qh_freeqhull(!qh_ALL);
+			qh_freeqhull(!qh_ALL);
+		#endif
+		#ifdef INERTIA
+			cout << in[0] << " " << in[1] << " " << in[2] << endl;
+		#endif
 	}
 
 	redisFree(context);
