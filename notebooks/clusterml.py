@@ -125,38 +125,50 @@ def get_representation(repname, dbid):
 
 
 # %%
-def get_dataset(database, ids, propertyname, repname):
+def get_dataset(database, ids, repname):
     s = pd.merge(pd.DataFrame({"dbid": ids}), database, how="left").sort_values(
         by="dbid"
     )
     X = np.array([get_representation(repname, _) for _ in s.dbid.values])
-    Y = s[propertyname].values
+    relevant_properties = (
+        "dipole polarizability homo lumo gap extent zpve enthalpy heatcap".split()
+    )
+    Y = {}
+    for propertyname in relevant_properties:
+        Y[propertyname] = s[propertyname].values
     return X, Y
 
 
-def do_split(database, N, propertyname, repname):
+def do_split(database, N, repname):
     allids = database.dbid.values
     np.random.shuffle(allids)
     trainids, testids = allids[:N], allids[N:]
-    trainX, trainY = get_dataset(database, trainids, propertyname, repname)
-    testX, testY = get_dataset(database, testids, propertyname, repname)
+    trainX, trainY = get_dataset(database, trainids, repname)
+    testX, testY = get_dataset(database, testids, repname)
     return trainX, trainY, testX, testY
 
 
-def learn_and_predict(database, N, repname, sigma, lval, propname):
-    trainX, trainY, testX, testY = do_split(database, N, propname, repname)
+def learn_and_predict(shape, N, repname, sigma):
+    trainX, trainY, testX, testY = do_split(df.query("shape==@shape"), N, repname)
 
     K = qml.kernels.gaussian_kernel(trainX, trainX, sigma)
-    K[np.diag_indices_from(K)] += lval
-    alphas = qml.math.cho_solve(K, trainY)
+    K2 = qml.kernels.gaussian_kernel(trainX, testX, sigma)
 
-    K = qml.kernels.gaussian_kernel(trainX, testX, sigma)
-    Ys = np.dot(K.transpose(), alphas)
+    for propertyname, Y in trainY.items():
+        for lval in (1e-8, 1e-10, 1e-12):
+            K[np.diag_indices_from(K)] += lval
 
-    return np.abs(Ys - testY).mean()
+            alphas = qml.math.cho_solve(K, Y)
+            pred = np.dot(K2.transpose(), alphas)
+            mae = np.abs(pred - testY[propertyname]).mean()
+            print(shape, N, repname, sigma, lval, propertyname, mae)
+
+            K[np.diag_indices_from(K)] -= lval
 
 
 # %%
-learn_and_predict(df.query("shape=='planar'"), 100, "CM", 2, 1e-7, "lumo")
-
-# %%
+for shape in "cube cuboid disk eldisk linear planar spheroid".split():
+    for tss in (32, 64, 128, 256, 512, 1024):
+        for rep in "CM BoB".split():
+            for sigma in 2 ** np.linspace(-5, 17):
+                learn_and_predict(shape, tss, rep, sigma)
